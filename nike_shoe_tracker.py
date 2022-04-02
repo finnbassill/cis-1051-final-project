@@ -1,6 +1,8 @@
+from hashlib import new
 from selenium import webdriver
 import os
 import time
+import re
 
 #Creating chrome options
 chrome_options = webdriver.ChromeOptions()
@@ -49,15 +51,50 @@ def user_input():
 #Function collects all urls of shoes on website
 def get_urls():
     url_list = []
-
-    #Get html of shoe homepages
-    driver.get('https://www.nike.com/w/mens-shoes-nik1zy7ok')
-    html = driver.page_source
-    time.sleep(3)
     
-    if 'CW2288-111' in html:
-        url_index = html.index('CW2288-111')
-        print(html[url_index-30, url_index + 10])
+    #Get html of all shoes on nike site
+    driver.get('https://www.nike.com/w?q=shoes&vst=shoes')
+
+    #Scrolls to bottom of dynamic loaded page
+    #REFERENCED: https://stackoverflow.com/questions/48850974/selenium-scroll-to-end-of-page-in-dynamically-loading-webpage
+    last_height = driver.execute_script("return document.body.scrollHeight")
+    
+    #Loops until @ bottom of page
+    run = True
+    while run:
+
+        #Scrolls down
+        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        time.sleep(2)
+        #Sets new height
+        new_height = driver.execute_script("return document.body.scrollHeight")
+        
+        #Compares heights to see if @ bottom
+        if new_height == last_height:
+            run = False
+        last_height = new_height
+
+    
+    #Gets page source code
+    source = driver.page_source
+    time.sleep(5)
+    source = source.split('"')
+
+    #Adds urls to list
+    for string in source:
+        if string[:23] == 'https://www.nike.com/t/':
+            url_list.append(string)
+    
+    #Removes duplicates
+    
+    for i in range(len(url_list)):
+        if i % 2 == 0:
+            url_list.pop(i)
+
+    file = open('temp.txt','w')
+    for url in url_list:
+        file.write(url + '\n')
+    file.close()
 
 get_urls()
 
