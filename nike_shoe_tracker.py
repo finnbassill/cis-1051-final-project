@@ -1,8 +1,6 @@
-from hashlib import new
 from selenium import webdriver
 import os
 import time
-import re
 
 #Creating chrome options
 chrome_options = webdriver.ChromeOptions()
