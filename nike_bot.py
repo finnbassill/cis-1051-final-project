@@ -3,8 +3,7 @@
 import os
 import re
 import discord
-from xml.etree.ElementTree import ElementTree
-from xmlrpc.server import SimpleXMLRPCDispatcher
+import time
 from selenium import webdriver
 from discord.ext import commands
 from dotenv import load_dotenv
@@ -19,13 +18,13 @@ chrome_options.add_argument('no-sandbox')
 chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
 chrome_options.add_experimental_option('useAutomationExtension', False)
 
-#Initializing driver
-driver = webdriver.Chrome(
+#Scrapes the webpage for the name of the shoe and available sizes
+def shoe_sizes(sku):
+
+    #Initializing driver
+    driver = webdriver.Chrome(
         os.path.join(r'/Applications', 'chromedriver'),
         options=chrome_options)
-
-#Scrapes the webpage for the name of the shoe and available sizes
-def nike_scraper(sku):
 
     #Searches the website for the sku
     search_url = f'https://www.nike.com/w?q={sku}&vst={sku}'
@@ -69,8 +68,69 @@ def nike_scraper(sku):
         iterator += 1
 
     url = driver.current_url
+
+    #Closes driver
+    driver.close()
     
     return shoe_name, shoe_type, shoe_sizes, url
+
+
+def all_skus():
+
+    #Initializing driver
+    driver = webdriver.Chrome(
+        os.path.join(r'/Applications', 'chromedriver'),
+        options=chrome_options)
+
+    sku_list = []
+    
+    #Get html of all shoes on nike site
+    driver.get('https://www.nike.com/w?q=shoes&vst=shoes')
+
+    #Scrolls to bottom of dynamic loaded page
+    #REFERENCED: https://stackoverflow.com/questions/48850974/selenium-scroll-to-end-of-page-in-dynamically-loading-webpage
+    last_height = driver.execute_script("return document.body.scrollHeight")
+    
+    #Loops until @ bottom of page
+    run = True
+    while run:
+
+        #Scrolls down
+        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        time.sleep(2)
+        #Sets new height
+        new_height = driver.execute_script("return document.body.scrollHeight")
+        
+        #Compares heights to see if @ bottom
+        if new_height == last_height:
+            run = False
+        last_height = new_height
+
+    
+    #Gets page source code
+    source = driver.page_source
+    time.sleep(5)
+    source = source.split('"')
+
+    #Adds urls to list
+    for string in source:
+        if string[:23] == 'https://www.nike.com/t/':
+            if string[-10:] not in sku_list:
+                sku_list.append(string[-10:])
+
+    file = open('sku_list.txt', 'w')
+    for sku in sku_list:
+        file.write(sku + '\n')
+    file.close()
+
+    #Closes driver
+    driver.close()
+
+    return file
+
+#all_skus()
+
+
 
 
 '''Discord Bot'''
@@ -79,29 +139,33 @@ def nike_scraper(sku):
 bot = commands.Bot(command_prefix='$')
 
 #Bot command function retrieves sku 
-@bot.command(name='nike', help='Temp')
-async def nike_bot(ctx, sku= None):
+@bot.command(name='nike', help='Enter "$nike [sku]" to find the sizes and size availability for that shoe; EX: $nike CW2288-111\nEnter "$nike skulist" to get a list of all the nike shoe skus on the website')
+async def nike_bot(ctx, user_input= None):
 
     #If nothing is entered
-    if sku is None:
+    if input is None:
         await ctx.send('`--Enter A Nike Sku--`')
 
     #Checks format of sku entered
-    sku_re = r'\b[a-zA-Z]{2}\d{4}-\d{3}\b'
-    if re.match(sku_re, sku):
+    size_re = r'\b[a-zA-Z]{2}\d{4}-\d{3}\b'
+    sku_re = r'\b[sS][kK][uU][lL][iI][sS][tT]\b'
+    if re.match(size_re, user_input):
         await ctx.send('`--Retrieving Size Info--`')
 
         #Calls the scraper to get shoe name and available sizes
-        shoe_info = nike_scraper(sku)
+        shoe_info = shoe_sizes(user_input)
         embed = discord.Embed(title=shoe_info[0], url=shoe_info[3], description=shoe_info[1])
         for size in shoe_info[2]:
             embed.add_field(name=size, value=shoe_info[2][size], inline=True)
         await ctx.send(embed=embed)
-        
+    elif re.match(sku_re, user_input):
+        await ctx.send('`--Retrieving All Skus--`')
+        sku_file = all_skus()
+        await ctx.send(file=discord.File('sku_list.txt'))
     else:
         await ctx.send('`--Sku Format Is Incorrect--`')
+
 
 #Loads .env and runs bot
 load_dotenv()
 bot.run(os.getenv('BOT_TOKEN'))
-
