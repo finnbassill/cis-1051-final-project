@@ -67,12 +67,20 @@ def shoe_sizes(sku):
 
         iterator += 1
 
+    #Checks to see if shoe is not available
+
+    not_avail_text = ''
+    try:
+        not_avail_text = driver.find_element_by_xpath("//div[@class='mt8-lg']/div").text
+    except:
+        pass
+    
     url = driver.current_url
 
     #Closes driver
     driver.close()
     
-    return shoe_name, shoe_type, shoe_sizes, url
+    return shoe_name, shoe_type, shoe_sizes, url, not_avail_text
 
 
 def all_skus():
@@ -147,21 +155,33 @@ async def nike_bot(ctx, user_input= None):
         await ctx.send('`--Enter A Nike Sku--`')
 
     #Checks format of sku entered
-    size_re = r'\b[a-zA-Z]{2}\d{4}-\d{3}\b'
+    size_re = r'\b[a-zA-Z0-9]{2}\d{4}-\d{3}\b'
     sku_re = r'\b[sS][kK][uU][lL][iI][sS][tT]\b'
     if re.match(size_re, user_input):
         await ctx.send('`--Retrieving Size Info--`')
 
         #Calls the scraper to get shoe name and available sizes
         shoe_info = shoe_sizes(user_input)
-        embed = discord.Embed(title=shoe_info[0], url=shoe_info[3], description=shoe_info[1])
+
+        #Checking to see if not available
+        if shoe_info[4] == '':
+            embed = discord.Embed(title=shoe_info[0], url=shoe_info[3], description=shoe_info[1])
+        else:
+            embed = discord.Embed(title=shoe_info[0], url=shoe_info[3], description=shoe_info[4])
+        
+        #Adding fields
         for size in shoe_info[2]:
             embed.add_field(name=size, value=shoe_info[2][size], inline=True)
         await ctx.send(embed=embed)
+
+    #Checking for command 'skulist'
     elif re.match(sku_re, user_input):
         await ctx.send('`--Retrieving All Skus--`')
-        sku_file = all_skus()
+        all_skus()
         await ctx.send(file=discord.File('sku_list.txt'))
+        os.remove('sku_list.txt')
+
+    #Checks for invalid command
     else:
         await ctx.send('`--Sku Format Is Incorrect--`')
 
@@ -169,3 +189,4 @@ async def nike_bot(ctx, user_input= None):
 #Loads .env and runs bot
 load_dotenv()
 bot.run(os.getenv('BOT_TOKEN'))
+
