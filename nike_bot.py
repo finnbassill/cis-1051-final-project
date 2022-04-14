@@ -40,9 +40,15 @@ def shoe_sizes(sku):
             driver.get(string)
             break
     
-    #Gets name and typeof shoe
-    shoe_name = driver.find_element_by_xpath("//div[@class='pr2-sm css-1ou6bb2']/h1").get_attribute("textContent")
-    shoe_type = driver.find_element_by_xpath("//div[@class='pr2-sm css-1ou6bb2']/h2").get_attribute("textContent")
+    #Gets name and type of shoe and checks if sku is on website
+    shoe_name = ''
+    shoe_type = ''
+    try:
+        shoe_name = driver.find_element_by_xpath("//div[@class='pr2-sm css-1ou6bb2']/h1").get_attribute("textContent")
+        shoe_type = driver.find_element_by_xpath("//div[@class='pr2-sm css-1ou6bb2']/h2").get_attribute("textContent")
+    except:
+        return False
+
 
     shoe_sizes = {}
     iterator = 1
@@ -162,17 +168,22 @@ async def nike_bot(ctx, user_input= None):
 
         #Calls the scraper to get shoe name and available sizes
         shoe_info = shoe_sizes(user_input)
-
-        #Checking to see if not available
-        if shoe_info[4] == '':
-            embed = discord.Embed(title=shoe_info[0], url=shoe_info[3], description=shoe_info[1])
-        else:
-            embed = discord.Embed(title=shoe_info[0], url=shoe_info[3], description=shoe_info[4])
         
-        #Adding fields
-        for size in shoe_info[2]:
-            embed.add_field(name=size, value=shoe_info[2][size], inline=True)
-        await ctx.send(embed=embed)
+        #Checks if sku is found
+        if shoe_info is False:
+            await ctx.send('`--Sku Not Found On Nike--`')
+        else:
+
+            #Checking to see if not available
+            if shoe_info[4] == '':
+                embed = discord.Embed(title=shoe_info[0], url=shoe_info[3], description=shoe_info[1])
+            else:
+                embed = discord.Embed(title=shoe_info[0], url=shoe_info[3], description=shoe_info[4])
+            
+            #Adding fields
+            for size in shoe_info[2]:
+                embed.add_field(name=size, value=shoe_info[2][size], inline=True)
+            await ctx.send(embed=embed)
 
     #Checking for command 'skulist'
     elif re.match(sku_re, user_input):
