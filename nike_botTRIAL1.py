@@ -1,8 +1,6 @@
-from hashlib import new
 from selenium import webdriver
 import os
 import time
-import re
 
 #Creating chrome options
 chrome_options = webdriver.ChromeOptions()
@@ -19,7 +17,7 @@ driver = webdriver.Chrome(
         options=chrome_options)
 
 
-#Function asks user for sku input(s)
+#Function asks user for sku inpu    t(s)
 def user_input():
     sku_list = []
 
